@@ -1,49 +1,66 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { StreamChat } from 'stream-chat';
-import { Channel, Chat, MessageInput, MessageList, OverlayProvider as ChatOverlayProvider } from 'stream-chat-react-native';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, {useEffect, useState} from 'react';
+import {StyleSheet, View} from 'react-native';
+import {
+  Channel,
+  Chat,
+  MessageInput,
+  MessageList,
+  OverlayProvider as ChatOverlayProvider,
+} from 'stream-chat-react-native';
+import {StreamChat} from 'stream-chat';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+} from 'react-native-safe-area-context';
 
-const userToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoibGluZ2VyaW5nLWJvYXQtMSIsImV4cCI6MTY0MTkzMzEyMH0.gb8U1mMDj1iCgtKePaN3lj9-VZEWMd8GtzJZ4bWFKtI';
+const userToken =
+  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoibGluZ2VyaW5nLWJvYXQtMSIsImV4cCI6MTY0MTkzMzEyMH0.gb8U1mMDj1iCgtKePaN3lj9-VZEWMd8GtzJZ4bWFKtI';
 
-const user = { id: 'lingering-boat-1' };
+const user = {id: 'lingering-boat-1'};
 
 const chatClient = StreamChat.getInstance('dz5f4d5kzrue');
-const connectUserPromise = chatClient.connectUser(user, userToken);
 
-const channel = chatClient.channel('messaging', 'channel_id');
-
-const ChannelScreen = () => {
-  const { bottom } = useSafeAreaInsets();
-
+const ChannelScreen = ({channel}) => {
   return (
-    <ChatOverlayProvider bottomInset={bottom} topInset={0}>
-      <SafeAreaView>
-        <Chat client={chatClient}>
-          {/* Setting keyboardVerticalOffset as 0, since we don't have any header yet */}
+    <SafeAreaView>
+      <Chat client={chatClient}>
+        {channel && (
           <Channel channel={channel} keyboardVerticalOffset={0}>
-            <View style={StyleSheet.absoluteFill}>
-              <MessageList />
-              <MessageInput />
-            </View>
+            <MessageList />
+            <MessageInput />
           </Channel>
-        </Chat>
-      </SafeAreaView>
-    </ChatOverlayProvider>
+        )}
+      </Chat>
+    </SafeAreaView>
   );
 };
 
+const styles = StyleSheet.create({
+  appContainer: {
+    flex: 1,
+  },
+});
+
 export default function App() {
   const [ready, setReady] = useState();
+  const [channel, setChannel] = useState();
 
   useEffect(() => {
     const initChat = async () => {
-      await connectUserPromise;
-      await channel.watch();
-      setReady(true);
+      try {
+        await chatClient.connectUser(user, userToken);
+        const messagingChannel = chatClient.channel('messaging', 'channel_id');
+        await messagingChannel.watch();
+        setChannel(messagingChannel);
+        setReady(true);
+      } catch (error) {
+        console.log(`Error: ${error}`);
+      }
     };
 
-    initChat();
+    if (!chatClient.user) {
+      initChat();
+    }
   }, []);
 
   if (!ready) {
@@ -52,7 +69,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ChannelScreen channel={channel} />
+      <View style={styles.appContainer}>
+        <ChatOverlayProvider topInset={60}>
+          {channel && <ChannelScreen channel={channel} />}
+        </ChatOverlayProvider>
+      </View>
     </SafeAreaProvider>
   );
 }
