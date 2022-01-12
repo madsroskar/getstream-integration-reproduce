@@ -1,112 +1,58 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { StreamChat } from 'stream-chat';
+import { Channel, Chat, MessageInput, MessageList, OverlayProvider as ChatOverlayProvider } from 'stream-chat-react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import React from 'react';
-import type {Node} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const userToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoibGluZ2VyaW5nLWJvYXQtMSIsImV4cCI6MTY0MTkzMzEyMH0.gb8U1mMDj1iCgtKePaN3lj9-VZEWMd8GtzJZ4bWFKtI';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const user = { id: 'lingering-boat-1' };
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
+const chatClient = StreamChat.getInstance('dz5f4d5kzrue');
+const connectUserPromise = chatClient.connectUser(user, userToken);
+
+const channel = chatClient.channel('messaging', 'channel_id');
+
+const ChannelScreen = () => {
+  const { bottom } = useSafeAreaInsets();
+
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
+    <ChatOverlayProvider bottomInset={bottom} topInset={0}>
+      <SafeAreaView>
+        <Chat client={chatClient}>
+          {/* Setting keyboardVerticalOffset as 0, since we don't have any header yet */}
+          <Channel channel={channel} keyboardVerticalOffset={0}>
+            <View style={StyleSheet.absoluteFill}>
+              <MessageList />
+              <MessageInput />
+            </View>
+          </Channel>
+        </Chat>
+      </SafeAreaView>
+    </ChatOverlayProvider>
   );
 };
 
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+export default function App() {
+  const [ready, setReady] = useState();
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  useEffect(() => {
+    const initChat = async () => {
+      await connectUserPromise;
+      await channel.watch();
+      setReady(true);
+    };
+
+    initChat();
+  }, []);
+
+  if (!ready) {
+    return null;
+  }
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <ChannelScreen channel={channel} />
+    </SafeAreaProvider>
   );
-};
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
-export default App;
+}
